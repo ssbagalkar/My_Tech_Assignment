@@ -1,5 +1,6 @@
 import warnings
 import cv2
+from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 import numpy.matlib
 import sklearn
@@ -7,6 +8,8 @@ import os
 import glob
 import sys
 import numpy as np
+from sklearn.externals import joblib
+from sklearn.model_selection import train_test_split
 
 warnings.filterwarnings("ignore")
 # diagnose function using HSV value thresholding
@@ -29,7 +32,7 @@ def extract_mean_hsv(input_img):
 	
 def diagnose_cv(input_img):
 	[mean_hue, mean_sat, mean_value] = extract_mean_hsv(input_img)
-	if 300<=mean_hue<=330 and mean_sat <= 0.5 and mean_value>=0.6:
+	if 300<=mean_hue<=330 and mean_sat <= 127.5 and mean_value>=153:
 		print("A")
 	else:
 		print("B")
@@ -63,37 +66,45 @@ def collect_data(path_to_data):
 	return a_data, b_data
 
 def train_model(path_a_features, path_b_features):
-	
 	X = np.vstack((path_a_features, path_b_features)).astype(np.float64)
-	
 	# Fit a per-column scalar
 	# X_scaler = StandardScaler().fit(X)
 	#
 	# Apply the scalar to X
 	# scaled_X = X_scaler.transform(X)
-	
+
 	# define labels
 	y = np.hstack((np.ones(len(path_a_features)), np.zeros(len(path_b_features))))
-	
+
 	# Use a random seeding
 	rand_state = np.random.randint(0, 10)
-	
+
 	# split data set
-	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=rand_state)
-	
+	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=rand_state)
+
 	# Using a SVM with polynomial kernel
-	print("Training started")
+	# print("Training started")
 	model = SVC(kernel='poly')
-	clf = model.fit(X, y)
-	print("Training ended")
-	
-	filename = os.path.abspath(os.path.join(os.path.dirname(__file__),'../')) + "\\svm_model_poly_trained.sav"
+	clf = model.fit(X_train, y_train)
+	# print("Training ended")
+
+	filename = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + "\\svm_model_poly_trained.sav"
 	joblib.dump(clf, filename)
-	print("Model saved")
+	# print("Model saved")
+	# check score of SVC
+	# print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
+
+def diagnose_with_svm(input_image):
+	mean_hsv = extract_mean_hsv(input_img)
+	features = extract_features(mean_hsv)
 	
-	# # check score of SVC
-	print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
-	
+	filename = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + "\\svm_model_poly_trained.sav"
+	clf = joblib.load(filename)
+	prediction = clf.predict(features)
+	if prediction == 0:
+		print("B")
+	else:
+		print("A")
 
 if __name__ == '__main__':
 	user_entered_path = sys.argv[1]
@@ -111,4 +122,4 @@ if __name__ == '__main__':
 			path_a_features = extract_features(a_data)
 			path_b_features = extract_features(b_data)
 			train_model(path_a_features, path_b_features)
-			
+			diagnose_with_svm(user_entered_path)
