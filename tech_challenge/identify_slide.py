@@ -26,8 +26,8 @@ def extract_mean_hsv(input_img):
 	saturation = hsv[:, :, 1].flatten()
 	value = hsv[:, :, 2].flatten()
 	mean_hue = (np.true_divide(hue.sum(0), (hue != 0).sum(0))) * 2
-	mean_sat = (np.true_divide(saturation.sum(0), (saturation != 0).sum(0))) / 255
-	mean_value = (np.true_divide(value.sum(0), (value != 0).sum(0))) / 255
+	mean_sat = (np.true_divide(saturation.sum(0), (saturation != 0).sum(0)))
+	mean_value = (np.true_divide(value.sum(0), (value != 0).sum(0)))
 	return mean_hue, mean_sat, mean_value
 	
 def diagnose_cv(input_img):
@@ -40,14 +40,19 @@ def diagnose_cv(input_img):
 ### This part uses HSV values as a feature vector to train SVM ###
 def extract_features(images_array):
 	features=[]
-	for image in images_array:
-
-		feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+	if images_array.size > 10:
+		feature_image = cv2.cvtColor(images_array, cv2.COLOR_RGB2HSV)
 		hist_features = extract_mean_hsv(feature_image)
 		features.append(hist_features)
+	else:
+		for image in images_array:
+			feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+			hist_features = extract_mean_hsv(feature_image)
+			features.append(hist_features)
 	return np.array(features)
 
-def collect_data(path_to_data):
+
+def collect_data():
 	pathology_A_images=[]
 	pathology_B_images=[]
 	
@@ -95,9 +100,7 @@ def train_model(path_a_features, path_b_features):
 	# print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
 
 def diagnose_with_svm(input_image):
-	mean_hsv = extract_mean_hsv(input_img)
-	features = extract_features(mean_hsv)
-	
+	features = extract_features(input_image)
 	filename = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + "\\svm_model_poly_trained.sav"
 	clf = joblib.load(filename)
 	prediction = clf.predict(features)
@@ -118,8 +121,8 @@ if __name__ == '__main__':
 		if load_model_choice == 0:
 			diagnose_cv(input_img)
 		else:
-			[a_data, b_data] = collect_data(user_entered_path)
+			[a_data, b_data] = collect_data()
 			path_a_features = extract_features(a_data)
 			path_b_features = extract_features(b_data)
 			train_model(path_a_features, path_b_features)
-			diagnose_with_svm(user_entered_path)
+			diagnose_with_svm(input_img)
