@@ -72,33 +72,33 @@ def collect_data():
 
 def train_model(path_a_features, path_b_features):
 	X = np.vstack((path_a_features, path_b_features)).astype(np.float64)
-	# Fit a per-column scalar
+	
+	## Generally scaling data is useful for better optimization convergence,
+	# but in this case the scales were very similar
+	#  Fit a per-column scalar
 	# X_scaler = StandardScaler().fit(X)
 	#
 	# Apply the scalar to X
 	# scaled_X = X_scaler.transform(X)
 
 	# define labels
-	y = np.hstack((np.ones(len(path_a_features)), np.zeros(len(path_b_features))))
+	y = np.hstack((np.ones(len(path_a_features)), np.zeros(len(path_b_features)))).astype(np.int32)
 
 	# Use a random seeding
 	rand_state = np.random.randint(0, 10)
 
 	# split data set
-	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=rand_state)
+	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=rand_state)
 
 	# Using a SVM with polynomial kernel
-	# print("Training started")
-	model = SVC(kernel='poly')
-	clf = model.fit(X_train, y_train)
-	# print("Training ended")
+	clf = SVC(kernel='rbf', verbose=False, C=100, gamma=0.001)
+	clf.fit(X_train, y_train)
 
+	# save the model for future use if needed
 	filename = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + "\\svm_model_poly_trained.sav"
 	joblib.dump(clf, filename)
-	# print("Model saved")
-	# check score of SVC
-	# print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
-
+	
+## This is the main diagnose function that uses svm to make final prediction
 def diagnose_with_svm(input_image):
 	features = extract_features(input_image)
 	filename = os.path.abspath(os.path.join(os.path.dirname(__file__), '../')) + "\\svm_model_poly_trained.sav"
